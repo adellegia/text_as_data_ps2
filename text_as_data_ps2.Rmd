@@ -1,0 +1,422 @@
+---
+title: "Text as Data Problem Set 2"
+author: "Ma Adelle Gia Arbo"
+date: "18 October 2022"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+  html_document:
+    toc: yes
+    keep_md: yes
+    df_print: kable
+    number_sections: no
+    highlight: tango
+    theme: lumen
+    toc_depth: 3
+    toc_float: yes
+    css: custom.css
+    self_contained: no
+---
+  
+<style>
+div.answer {background-color:#f3f0ff; border-radius: 5px; padding: 20px;}
+</style>
+
+
+```{r, include = F}
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = TRUE,
+                      error = FALSE,
+                      message = FALSE,
+                      warning = FALSE,
+                      comment = NA)
+```
+
+<br>
+
+***
+
+## I. Research question
+
+The objective of this report is to answer the research question, "How did the intentions, motives, and views between Democrats and Republicans evolve in the United States using electoral manifestos in 2012, 2016, and 2020?"
+
+Specifically, this report wants to answer the following questions:
+1. What are the prevailing topics in the United States electoral manifestos between the parties across the years?
+2. What are the differences and similarities of the prevailing topics between the parties across the years?
+
+These questions can be answered using topic modeling, an unsupervised machine learning method for classifying a set of documents, detecting words and phrases, and clustering word groups to best describe a set of documents. 
+
+To answer the research question, two types of topic modeling methods will be used. First is the Latent Dirichlet Allocation (LDA), treats each document as a mixture of topics and each topic as a mixture of words. Structural topic modeling will also be implemented which allows correlations between topics. The results of each method will be compared to each other to assess whether using one approach is better than the other for this task.
+
+With topic modeling, the prevailing and dominant topics between Democrats and Republicans can be observed over time. The differences and similarities between the parties' views can also be identified.
+
+
+## II. Data collection and processing
+
+For this topic modeling task, the raw dataset used is the United States manifestos obtained from the [WZB](https://manifesto-project.wzb.eu/). The final dataset used consists of 12,121 documents between the Democratic Party and Republican Party across last three electoral years (2012, 2016, 2020).
+
+```{r setup, include = T}
+# loading packages
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(manifestoR, quanteda, tidyr, purrr, ggplot2, 
+               tidytext, httr, rvest, readr, xml2, reshape2,
+               stringr, stringi, dplyr, tibble, lexicon,
+               NMF, topicmodels, LDAvis, stm)
+```
+
+In the code below, the manifestos of each party per year are downloaded and saved into a dataframe. For ease of use, the dataset from 2000 to 2020 is already saved in the data folder so as to avoid downloading the same data repeatedly.
+```{r}
+# loop data collection
+
+collect = FALSE
+
+if (collect == TRUE) {
+  mp_setapikey("manifesto_apikey.txt")
+
+  mpds <- mp_maindataset()
+  my_corpus <- mp_corpus(countryname == "United States" &
+                           edate > as.Date("2000-11-07")) #change country year
+  sample <- mpds %>%  
+    filter(countryname == "United States" & 
+             edate > as.Date("2000-11-07"))
+  
+  us_df <- tibble()
+  
+  for (i in names(my_corpus)) {
+    doc <- my_corpus[[i]]
+    doc_df <- as_tibble(as.data.frame(doc))
+    doc_df$id <- i
+    us_df <- rbind(us_df, doc_df) 
+  }
+  
+  us_df <- us_df %>%
+    mutate(party = as.numeric(sub("_.*", "", id)),
+           date = as.numeric(sub(".*_", "", id)))
+  
+  us_manifestos <- us_df %>%
+  left_join(sample[,1:9], by = c("party"="party", "date"="date"))
+
+  # save data
+  write.csv(us_manifestos, "./data/us_manifestos.csv")
+} else {
+  us_manifestos <- read.csv("./data/us_manifestos.csv")
+}
+
+```
+
+Initially, five electoral years were considered but unfortunately, the data for the Democratic Party in 2008 only contained one document. Due to this, the analysis will only focus on the three recent electoral years.
+```{r}
+print(table(us_manifestos$edate, us_manifestos$partyname))
+```
+A total of 12,121 documents will be processed and analyzed, with 5750 documents for the Democratic Party and 6371 documents from the Republican Party, from the last three electoral years.
+```{r}
+df <- us_manifestos %>%  
+  filter(countryname == "United States" & edate >= as.Date("2012-11-06")) %>%
+  filter(!is.na(text))
+
+print(table(df$edate, df$partyname))
+
+print(table( df$partyname))
+```
+
+
+## III. Topic modeling
+
+
+### 1. Latent Dirichlet Allocation
+
+The document-feature matrix is created for each party and electoral year. Each dfmat is generated using the set of documents which are tokenized by removing English stopwords and punctuations, omitting obvious words like "united", "democrat", and "republican", stemming words, and setting the minimum term frequency as 10.
+
+The resulting 6 dfmats are appended into a single list, `dfmat_list`. The LDA model processes each each dfmat in the `dfmat_list` in the loop. Each document-topics matrix (gamma) and topic-words matrix (beta) are converted into a dataframe and are tagged to the corresponding party and year. To create a single dataframe of `doc_topics_df` and `topic_words_df`, each converted dataframe is also appended inside the loop.
+
+With LDA, `doc_topics_df`is a dataframe in which every document for a particular year and party is a mixture of topics. Each document may contain words from several topics in particular proportions. For instance, if the number of topics is set as 2, document 1 can be 80% topic1 and 20% topic2 while document 2 can be 40% topic1 and 60% topic2.
+
+Meanwhile, `topic_words_df`is a dataframe in which every topic for a specific year and party is a mixture of words. For example, a two-topic model of US manifestos of the Republican Party in 2020 can have one topic about economic growth and another on healthcare. The most common words for the economic growth topic can be "GDP", "development", "inflation", while the healthcare topic can be "covid", "pandemic", and "health". In LDA, words can be shared between topics.
+
+```{r}
+# loop create dfmat and LDA by year and party
+
+LDA = TRUE
+
+if (LDA == TRUE) {
+  dfmat_list <- list()
+  doc_topics_df <- tibble()
+  topic_words_df <- tibble()
+  omit_words <- c("united", "state", "democrat", "republican",
+                     "american", "america", "u.s")
+  
+  for (i in unique(df$edate)) {
+    for (j in unique(df$partyname)) {
+      df1 <- df %>%
+      filter(partyname == j & edate == as.Date(i))
+    
+      dfmat <-  df1$text %>%
+        tokens(remove_punct = T) %>%
+        tokens_remove(pattern=stopwords("en")) %>%
+        tokens_remove(omit_words) %>%
+        tokens_wordstem() %>%
+        dfm()  %>%
+        dfm_trim(min_termfreq = 10) 
+    
+      raw.sum=apply(dfmat,1,FUN=sum)
+      dfmat=dfmat[raw.sum!=0,]
+      
+      print(sprintf("Created (%s, %s) dfmat using %s manifestos of the %s", 
+                   dim(dfmat)[1], dim(dfmat)[2], format(as.Date(i), format = "%Y"), j))
+      
+      dfmat_list <- append(dfmat_list, dfmat)
+      
+      
+      # LDA model
+      print(sprintf("Starting LDA model using %s manifestos of the %s", 
+                    format(as.Date(i), format = "%Y"), j))
+      
+      lda <- LDA(dfmat, control=list(seed=28), k=10) # change num of topics
+  
+      W <- lda@gamma # document-topic
+      H <- lda@beta # topic-term
+      
+      doc_topics <- tidy(lda, matrix="gamma") %>%
+        mutate(date = i, partyname = j)
+      doc_topics_df <- rbind(doc_topics_df, doc_topics)
+      
+      
+      topic_words <- tidy(lda, matrix="beta") %>%
+        mutate(date = i, partyname = j)
+      topic_words_df <- rbind(topic_words_df, topic_words)
+      
+      print(sprintf("Finished LDA model using %s manifestos of the %s", 
+                    format(as.Date(i), format = "%Y"), j))
+    }
+  }
+  write.csv(doc_topics_df, "./data/doc_topics.csv")
+  write.csv(topic_words_df, "./data/topic_words.csv")
+} else {
+  doc_topics_df <- read.csv("./data/doc_topics.csv")
+  topic_words_df <- read.csv("./data/topic_words.csv")
+}
+
+```
+
+
+For this task, the LDA model is set to return 10 topics. The number of topics is a hyperparameter, which affects the resulting topics in such a way that a higher the number of topics can identify more diverse and specific topics. In contrast, by decreasing this hyperparameter, the model can identify more general topics given the set of documents.
+
+Also, it must be noted that the LDA model returns different results unless the `contol` is fixed by setting a similar seed every run.
+
+After investigating the document-topics matrix, using a 10-topic model identifies that each topic account for more or less than 10% per document. For example, the table below shows the topic share of the 10 topics using Democrats' manifesto in 2012.
+
+```{r}
+doc_topics_df %>%
+  arrange(document, date, partyname) %>%
+  mutate(topic_share = round(gamma,3)) %>%
+  select(date, partyname, document, topic, topic_share) %>%
+  head(10)
+
+```
+
+
+Now, to investigate the underlying topics in each party's manifestos in the three recent electoral years, the results are plotted showing the top 10 terms with the highest per-topic-per-word probabilities in topic.
+
+```{r}
+topic_words_df1 <- topic_words_df %>%
+  mutate(year = format(as.Date(date), format = "%Y")) %>%
+  mutate(party = ifelse(partyname == "Republican Party", "Republicans", "Democrats")) %>%
+  mutate(group = paste0(year, " ", party),
+         color = ifelse(party == "Democrats", "#2c7fb8", "#de2d26")) %>% 
+  group_by(topic, date, year, partyname) %>%
+  slice_max(beta, n = 10) %>% 
+  ungroup() %>%
+  arrange(date, topic, partyname, -beta)
+
+```
+
+```{r, include = FALSE}
+topic_words_df1 %>%
+  filter(party == "Republicans" & year == "2020") %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(beta, term, fill = color)) +
+  geom_bar(stat="identity") +
+  facet_wrap(~ topic, scales = "free", ncol=5) +
+  scale_y_reordered() +
+  scale_fill_identity() +
+  theme_test()
+```
+
+In 2012, Democrats' manifesto appear to show Obama's focus on health care or Obamacare in topic 3, and about the middle class and tax in topic 7. 
+
+In 2016, the topics from Democrats' manifesto are also about healthcare in topic 7.
+
+In 2020, most of the topics are about healthcare for the Democrats, for instance, topic 10 consists words like "health workers" and "pandemic". Interestingly, topic 4 contains the word "trump", "secur", and "protect" together.
+
+```{r, message=FALSE}
+for (i in unique(topic_words_df1$group)){
+    p<-topic_words_df1 %>%
+      filter(group == i) %>%
+      mutate(term = reorder_within(term, beta, topic)) %>%
+      ggplot(aes(beta, term, fill = color)) +
+      geom_col(show.legend = FALSE) +
+      facet_wrap(~ topic, scales = "free", ncol=5) +
+      scale_y_reordered() +
+      labs(title = i) +
+      scale_fill_identity() +
+      theme_test()
+    print(p)
+    ggsave(paste0("./plots/lda_",i, ".png"))
+}
+  
+```
+
+### 2. Structural Topic Modeling
+
+In this section, structural topic model is implemented using the library `stm`. STM offers more flexibility in the analysis such as explicitly modeling which variables influence the prevalence of topics. It also allows for topic correlation which will be shown below.
+
+
+To start STM, each document-feature matrix which were created in the code above is converted to an stm format then STM is applied to identify 15 topics in the for loop. In this exercise, the number of topics is arbitrarily chosen to be 15 since decreasing the number of topics results to longer time for the model to converge. The results of the model for each set of documents is saved as a list in `model_list`, so that it can easily be called later on.
+```{r, echo=FALSE,  message=FALSE, warning=FALSE, results=FALSE}
+
+model_list <- list()
+dfm_stm_list <- list()
+for (i in 1:length(dfmat_list)){
+
+  dfm_stm <- convert(dfmat_list[[i]], to = "stm")
+  dfm_stm_list <-append(dfm_stm_list, list(dfm_stm))
+  
+  model <- list(stm(documents = dfm_stm$documents,
+           vocab = dfm_stm$vocab,
+           K = 15,
+           verbose = TRUE))
+  model_list <-append(model_list, model)
+}
+```
+
+The `stm` library also offers more functions than `lda`. For example, the top words of the 2012 Democratic Party's manifesto is printed below by the highest conditional probability for each topic. Meanwhile, FREX shows which words are comparatively common for a topic and exclusive for that topic compared to other topics
+```{r}
+labelTopics(model_list[[1]])
+```
+
+The correlation across the topics can also be visualized. Using the same manifesto above, topics 15, 1, 2, 6, 5 and 13 appear to be correlated. In addition, two topics (topic 1 and 2) can be compared wherein words are plotted with size proportional to their use within the topic and the x-axis shows how close the terms are to one topic over the other (y-axis is random).
+
+```{r}
+topic_correlation<-topicCorr(model_list[[1]])
+plot(topic_correlation)
+
+plot(model_list[[1]], 
+     type="perspectives", 
+     topics=c(1, 2), 
+     plabels = c("Topic 1","Topic 2"))
+```
+
+```{r}
+topicQuality(model=model_list[[1]], documents=dfm_stm_list[[1]]$documents)
+```
+
+Below, the topic estimates of document-topic proportions is plotted using 2012 Democrats' manifesto. This plot basically tells us which topics are coming from which documents. As expected, each topic has no relation or very little relation with several documents.
+```{r}
+plot(model_list[[1]], type = "hist", topics = sample(1:15, size = 15))
+plot(model_list[[1]], type="hist")
+```
+
+
+```{r, include = FALSE}
+png(paste0("./plots/stm_2020 Republicans.png"),  width = 1000, height = 700, units = "px")
+par(bty="n",col="#de2d26",lwd=5)
+p6<-plot.STM(model_list[[6]],type="summary", n = 5, main = "2020 Republicans", 
+         width=50, text.cex=1.5)
+dev.off()
+
+png(paste0("./plots/stm_2020 Democrats.png"),  width = 1000, height = 700, units = "px")
+par(bty="n",col="#2c7fb8",lwd=5)
+p5<-plot.STM(model_list[[5]],type="summary", n = 5, main = "2020 Democrats", 
+         width=50, text.cex=1.5)
+dev.off()
+
+png(paste0("./plots/stm_2016 Republicans.png"),  width = 1000, height = 700, units = "px")
+par(bty="n",col="#de2d26",lwd=5)
+p4<-plot.STM(model_list[[4]],type="summary", n = 5, main = "2016 Republicans", 
+         width=50, text.cex=1.5)
+dev.off()
+
+png(paste0("./plots/stm_2016 Democrats.png"),  width = 1000, height = 700, units = "px")
+par(bty="n",col="#2c7fb8",lwd=5)
+p5<-plot.STM(model_list[[5]],type="summary", n = 5, main = "2016 Democrats", 
+         width=50, text.cex=1.5)
+dev.off()
+
+png(paste0("./plots/stm_2012 Republicans.png"),  width = 1000, height = 700, units = "px")
+par(bty="n",col="#de2d26",lwd=5)
+p2<-plot.STM(model_list[[2]],type="summary", n = 5, main = "2012 Republicans", 
+        width=50, text.cex=1.5)
+dev.off()
+
+png(paste0("./plots/stm_2012 Democrats.png"),  width = 1000, height = 700, units = "px")
+par(bty="n",col="#2c7fb8",lwd=5)
+p1<-plot.STM(model_list[[1]],type="summary", n = 5, main = "2012 Democrats", 
+         width=50, text.cex=1.5)
+dev.off()
+```
+
+
+Another built-in function allows for topic exploration to easily analyze the results. Using `plot.STM`, the topic distribution is visualized, with most common words for each topic, between Democrats and Republicans across the three electoral years. This is basically similar to the topic exploration that was done with LDA but the plots are easier to interpret as it is arranged by the expected topic proportions and with the top common words already provided for each topic. 
+
+
+```{r}
+par(bty="n",col="#2c7fb8",lwd=5)
+plot.STM(model_list[[1]],type="summary", n = 5, main = "2012 Democrats", 
+         width=50, text.cex=.8)
+
+par(bty="n",col="#de2d26",lwd=5)
+plot.STM(model_list[[2]],type="summary", n = 5, main = "2012 Republicans", 
+        width=50, text.cex=.8)
+
+par(bty="n",col="#2c7fb8",lwd=5)
+plot.STM(model_list[[3]],type="summary", n = 5, main = "2016 Democrats", 
+         width=50, text.cex=.8)
+
+par(bty="n",col="#de2d26",lwd=5)
+plot.STM(model_list[[4]],type="summary", n = 5, main = "2016 Republicans", 
+         width=50, text.cex=.8)
+
+par(bty="n",col="#2c7fb8",lwd=5)
+plot.STM(model_list[[5]],type="summary", n = 5, main = "2020 Democrats", 
+         width=50, text.cex=.8)
+
+par(bty="n",col="#de2d26",lwd=5)
+plot.STM(model_list[[6]],type="summary", n = 5, main = "2020 Republicans", 
+         width=50, text.cex=.8)
+
+```
+
+
+```{r}
+par(mfrow=c(3,2))
+par(bty="n",col="#de2d26",lwd=5)
+plot.STM(model_list[[6]],type="summary", n = 3, main = "2020 Republicans", 
+     topics=c(4,5,3), text.cex=.8, width=30)
+par(bty="n",col="#2c7fb8",lwd=5)
+plot.STM(model_list[[5]],type="summary", n = 3, main = "2020 Democrats", 
+     topics=c(3, 11, 13), text.cex=.8, width=30)
+par(bty="n",col="#de2d26",lwd=5)
+plot.STM(model_list[[4]],type="summary", n = 3, main = "2016 Republicans", 
+     topics=c(4,5,3), text.cex=.8, width=30)
+par(bty="n",col="#2c7fb8",lwd=5)
+plot.STM(model_list[[3]],type="summary", n = 3, main = "2016 Democrats", 
+     topics=c(12,14,8), text.cex=.8, width=30)
+par(bty="n",col="#de2d26",lwd=5)
+plot.STM(model_list[[2]],type="summary", n = 3, main = "Republicans 2012", 
+    topics=c(14,7,2), text.cex=.8, width=30)
+par(bty="n",col="#2c7fb8",lwd=5)
+plot.STM(model_list[[1]],type="summary", n = 3, main = "2012 Democrats", 
+     topics=c(6,9,8), text.cex=.8, width=30)
+```
+
+
+
+## V. Conclusion
+
+Use your topic model to answer your research question by showing plots or statistical results. Discuss the implications of what you find, and any limitations inherent in your approach. Discuss how the work could be improved upon in future research.
+
+```{r}
+
+```
+
