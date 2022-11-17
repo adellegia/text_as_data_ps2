@@ -3,6 +3,8 @@
 .RData
 .Ruserdata
 
+*.log
+
 text_as_data_ps2.md
 manifesto_apikey.txt
 manifestoRworkflow.pdf
