@@ -341,45 +341,54 @@ div.answer {background-color:#f3f0ff; border-radius: 5px; padding: 20px;}
 <p><br></p>
 <hr />
 <div id="i.-research-question" class="section level2">
-<h2>I. Research question</h2>
+<h2>I. Research Question</h2>
 <p>The objective of this report is to answer the research question, “How
 did the intentions, motives, and views between Democrats and Republicans
 evolve in the United States using electoral manifestos in 2012, 2016,
-and 2020?”</p>
-<p>Specifically, this report wants to answer the following questions: 1.
-What are the prevailing topics in the United States electoral manifestos
-between the parties across the years? 2. What are the differences and
-similarities of the prevailing topics between the parties across the
-years?</p>
+and 2020?” Specifically, this report wants to answer the following
+questions:</p>
+<ul>
+<li><ol style="list-style-type: decimal">
+<li>What are the prevailing topics from the United States electoral
+manifestos between the parties across the years?</li>
+</ol></li>
+<li><ol start="2" style="list-style-type: decimal">
+<li>What are the differences and similarities of the prevailing topics
+between the parties across the years?</li>
+</ol></li>
+</ul>
 <p>These questions can be answered using topic modeling, an unsupervised
 machine learning method for classifying a set of documents, detecting
-words and phrases, and clustering word groups to best describe a set of
-documents.</p>
-<p>To answer the research question, two types of topic modeling methods
-will be used. First is the Latent Dirichlet Allocation (LDA), treats
-each document as a mixture of topics and each topic as a mixture of
-words. Structural topic modeling will also be implemented which allows
-correlations between topics. The results of each method will be compared
-to each other to assess whether using one approach is better than the
-other for this task.</p>
-<p>With topic modeling, the prevailing and dominant topics between
-Democrats and Republicans can be observed over time. The differences and
-similarities between the parties’ views can also be identified.</p>
+words and phrases, and clustering word groups that best describe a set
+of documents. For the task at hand, two types of topic modeling methods
+will be implemented. First is the Latent Dirichlet Allocation (LDA),
+which treats each document as a mixture of topics and each topic as a
+mixture of words. Structural topic modeling (STM) will also be
+implemented which is similar to LDA but employs meta data about
+documents and allows correlations between topics. The results of each
+method will be compared to assess whether using one approach is better
+and more efficient and flexible than the other. Moreover, the discussion
+will include how specifying hyperparameters affect the findings.</p>
+<p>With topic modeling, the prevailing and dominant topics in the
+manifestos between Democrats and Republicans can be observed over time.
+Furthermore, the differences and similarities between the parties’ views
+will be identified.</p>
 </div>
 <div id="ii.-data-collection-and-processing" class="section level2">
-<h2>II. Data collection and processing</h2>
-<p>For this topic modeling task, the raw dataset used is the United
-States manifestos obtained from the <a
-href="https://manifesto-project.wzb.eu/">WZB</a>. The final dataset used
-consists of 12,121 documents between the Democratic Party and Republican
-Party across last three electoral years (2012, 2016, 2020).</p>
+<h2>II. Data Collection and Processing</h2>
+<p>The raw dataset on the United States manifestos in 2012, 2016, and
+2018 is obtained from the <a
+href="https://manifesto-project.wzb.eu/">WZB</a>. The data collection
+and processing of the data will be discussed in this section. The final
+dataset consists a total of 12,121 documents between the Democratic
+Party and Republican Party across the last three electoral years.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># loading packages</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">require</span>(<span class="st">&quot;pacman&quot;</span>)) <span class="fu">install.packages</span>(<span class="st">&quot;pacman&quot;</span>)</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(manifestoR, quanteda, tidyr, purrr, ggplot2, </span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>               tidytext, httr, rvest, readr, xml2, reshape2,</span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>               stringr, stringi, dplyr, tibble, lexicon,</span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>               NMF, topicmodels, LDAvis, stm)</span></code></pre></div>
-<p>In the code below, the manifestos of each party per year are
+<p>In the code below, the manifestos of each party and year are
 downloaded and saved into a dataframe. For ease of use, the dataset from
 2000 to 2020 is already saved in the data folder so as to avoid
 downloading the same data repeatedly.</p>
@@ -418,126 +427,124 @@ downloading the same data repeatedly.</p>
 <span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>} <span class="cf">else</span> {</span>
 <span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>  us_manifestos <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">&quot;./data/us_manifestos.csv&quot;</span>)</span>
 <span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
-<p>Initially, five electoral years were considered but unfortunately,
-the data for the Democratic Party in 2008 only contained one document.
-Due to this, the analysis will only focus on the three recent electoral
-years.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">table</span>(us_manifestos<span class="sc">$</span>edate, us_manifestos<span class="sc">$</span>partyname))</span></code></pre></div>
-<pre><code>            
-             Democratic Party Republican Party
-  2004-11-02             1000             1989
-  2008-11-04                1             1154
-  2012-11-06             1395             1793
-  2016-11-08             1593             2289
-  2020-11-03             2762             2289</code></pre>
-<p>A total of 12,121 documents will be processed and analyzed, with 5750
-documents for the Democratic Party and 6371 documents from the
-Republican Party, from the last three electoral years.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> us_manifestos <span class="sc">%&gt;%</span>  </span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(countryname <span class="sc">==</span> <span class="st">&quot;United States&quot;</span> <span class="sc">&amp;</span> edate <span class="sc">&gt;=</span> <span class="fu">as.Date</span>(<span class="st">&quot;2012-11-06&quot;</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(text))</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">table</span>(df<span class="sc">$</span>edate, df<span class="sc">$</span>partyname))</span></code></pre></div>
+<p>A total of 12,121 documents from the US manifestos for the last three
+electoral years will be processed and analyzed for topic modeling with
+5750 documents for the Democratic Party and 6371 documents for the
+Republican Party. The frequency table is summarized below.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> us_manifestos <span class="sc">%&gt;%</span>  </span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(edate <span class="sc">&gt;=</span> <span class="fu">as.Date</span>(<span class="st">&quot;2012-11-06&quot;</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(text))</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">table</span>(df<span class="sc">$</span>edate, df<span class="sc">$</span>partyname))</span></code></pre></div>
 <pre><code>            
              Democratic Party Republican Party
   2012-11-06             1395             1793
   2016-11-08             1593             2289
   2020-11-03             2762             2289</code></pre>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">table</span>( df<span class="sc">$</span>partyname))</span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">table</span>( df<span class="sc">$</span>partyname))</span></code></pre></div>
 <pre><code>
 Democratic Party Republican Party 
             5750             6371 </code></pre>
 </div>
-<div id="iii.-topic-modeling" class="section level2">
-<h2>III. Topic modeling</h2>
+<div id="iii.-topic-modeling-results-and-discussion"
+class="section level2">
+<h2>III. Topic Modeling Results and Discussion</h2>
+<p>As mentioned above, the topic modeling task will involve two
+approaches: LDA and STM. Since there are two parties and three years in
+the dataset, it can be thought of that there are six sets of documents.
+For the pre-processing task, the document-feature matrix is created for
+each party and electoral year. Each dfmat is generated using the set of
+documents which are tokenized by removing English stopwords and
+punctuations, omitting obvious words like “united” and “state”, stemming
+words, and setting the minimum term frequency to 10 (also a
+hyperparameter). The resulting six dfmats are appended into a single
+list, <code>dfmat_list</code>. This pre-processing task is implemented
+inside the loop of the code below.</p>
 <div id="latent-dirichlet-allocation" class="section level3">
 <h3>1. Latent Dirichlet Allocation</h3>
-<p>The document-feature matrix is created for each party and electoral
-year. Each dfmat is generated using the set of documents which are
-tokenized by removing English stopwords and punctuations, omitting
-obvious words like “united”, “democrat”, and “republican”, stemming
-words, and setting the minimum term frequency as 10.</p>
-<p>The resulting 6 dfmats are appended into a single list,
-<code>dfmat_list</code>. The LDA model processes each each dfmat in the
-<code>dfmat_list</code> in the loop. Each document-topics matrix (gamma)
-and topic-words matrix (beta) are converted into a dataframe and are
-tagged to the corresponding party and year. To create a single dataframe
-of <code>doc_topics_df</code> and <code>topic_words_df</code>, each
-converted dataframe is also appended inside the loop.</p>
-<p>With LDA, <code>doc_topics_df</code>is a dataframe in which every
-document for a particular year and party is a mixture of topics. Each
-document may contain words from several topics in particular
-proportions. For instance, if the number of topics is set as 2, document
-1 can be 80% topic1 and 20% topic2 while document 2 can be 40% topic1
-and 60% topic2.</p>
-<p>Meanwhile, <code>topic_words_df</code>is a dataframe in which every
-topic for a specific year and party is a mixture of words. For example,
+<p>The LDA model processes each dfmat in the <code>dfmat_list</code> in
+the loop. Each document-topics matrix (gamma) and topic-words matrix
+(beta) are converted into a dataframe and are tagged to the
+corresponding party and year. Each converted dataframe is appended to
+the previous converted dataframe inside the loop to create a single
+dataframe called <code>doc_topics_df</code> and
+<code>topic_words_df</code>.</p>
+<p><code>doc_topics_df</code> is a dataframe in which every document for
+a particular party and year is a mixture of topics. Each document may
+contain words from several topics in particular proportions. For
+instance, if the number of topics (k) is set as 2, document 1 can be 80%
+topic1 and 20% topic2 while document 2 can be 40% topic1 and 60%
+topic2.</p>
+<p>Meanwhile, <code>topic_words_df</code> is a dataframe in which every
+topic for a specific party and year is a mixture of words. For example,
 a two-topic model of US manifestos of the Republican Party in 2020 can
 have one topic about economic growth and another on healthcare. The most
 common words for the economic growth topic can be “GDP”, “development”,
 “inflation”, while the healthcare topic can be “covid”, “pandemic”, and
-“health”. In LDA, words can be shared between topics.</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># loop create dfmat and LDA by year and party</span></span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>LDA <span class="ot">=</span> <span class="cn">TRUE</span></span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (LDA <span class="sc">==</span> <span class="cn">TRUE</span>) {</span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  dfmat_list <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
-<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  doc_topics_df <span class="ot">&lt;-</span> <span class="fu">tibble</span>()</span>
-<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  topic_words_df <span class="ot">&lt;-</span> <span class="fu">tibble</span>()</span>
-<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  omit_words <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;united&quot;</span>, <span class="st">&quot;state&quot;</span>, <span class="st">&quot;democrat&quot;</span>, <span class="st">&quot;republican&quot;</span>,</span>
-<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>                     <span class="st">&quot;american&quot;</span>, <span class="st">&quot;america&quot;</span>, <span class="st">&quot;u.s&quot;</span>)</span>
-<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">unique</span>(df<span class="sc">$</span>edate)) {</span>
-<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> (j <span class="cf">in</span> <span class="fu">unique</span>(df<span class="sc">$</span>partyname)) {</span>
-<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>      df1 <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span></span>
-<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>      <span class="fu">filter</span>(partyname <span class="sc">==</span> j <span class="sc">&amp;</span> edate <span class="sc">==</span> <span class="fu">as.Date</span>(i))</span>
-<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>      dfmat <span class="ot">&lt;-</span>  df1<span class="sc">$</span>text <span class="sc">%&gt;%</span></span>
-<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>        <span class="fu">tokens</span>(<span class="at">remove_punct =</span> T) <span class="sc">%&gt;%</span></span>
-<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>        <span class="fu">tokens_remove</span>(<span class="at">pattern=</span><span class="fu">stopwords</span>(<span class="st">&quot;en&quot;</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>        <span class="fu">tokens_remove</span>(omit_words) <span class="sc">%&gt;%</span></span>
-<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>        <span class="fu">tokens_wordstem</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a>        <span class="fu">dfm</span>()  <span class="sc">%&gt;%</span></span>
-<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a>        <span class="fu">dfm_trim</span>(<span class="at">min_termfreq =</span> <span class="dv">10</span>) </span>
-<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a>      raw.sum<span class="ot">=</span><span class="fu">apply</span>(dfmat,<span class="dv">1</span>,<span class="at">FUN=</span>sum)</span>
-<span id="cb9-26"><a href="#cb9-26" aria-hidden="true" tabindex="-1"></a>      dfmat<span class="ot">=</span>dfmat[raw.sum<span class="sc">!=</span><span class="dv">0</span>,]</span>
-<span id="cb9-27"><a href="#cb9-27" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb9-28"><a href="#cb9-28" aria-hidden="true" tabindex="-1"></a>      <span class="fu">print</span>(<span class="fu">sprintf</span>(<span class="st">&quot;Created (%s, %s) dfmat using %s manifestos of the %s&quot;</span>, </span>
-<span id="cb9-29"><a href="#cb9-29" aria-hidden="true" tabindex="-1"></a>                   <span class="fu">dim</span>(dfmat)[<span class="dv">1</span>], <span class="fu">dim</span>(dfmat)[<span class="dv">2</span>], <span class="fu">format</span>(<span class="fu">as.Date</span>(i), <span class="at">format =</span> <span class="st">&quot;%Y&quot;</span>), j))</span>
-<span id="cb9-30"><a href="#cb9-30" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb9-31"><a href="#cb9-31" aria-hidden="true" tabindex="-1"></a>      dfmat_list <span class="ot">&lt;-</span> <span class="fu">append</span>(dfmat_list, dfmat)</span>
-<span id="cb9-32"><a href="#cb9-32" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb9-33"><a href="#cb9-33" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb9-34"><a href="#cb9-34" aria-hidden="true" tabindex="-1"></a>      <span class="co"># LDA model</span></span>
-<span id="cb9-35"><a href="#cb9-35" aria-hidden="true" tabindex="-1"></a>      <span class="fu">print</span>(<span class="fu">sprintf</span>(<span class="st">&quot;Starting LDA model using %s manifestos of the %s&quot;</span>, </span>
-<span id="cb9-36"><a href="#cb9-36" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">format</span>(<span class="fu">as.Date</span>(i), <span class="at">format =</span> <span class="st">&quot;%Y&quot;</span>), j))</span>
-<span id="cb9-37"><a href="#cb9-37" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb9-38"><a href="#cb9-38" aria-hidden="true" tabindex="-1"></a>      lda <span class="ot">&lt;-</span> <span class="fu">LDA</span>(dfmat, <span class="at">control=</span><span class="fu">list</span>(<span class="at">seed=</span><span class="dv">28</span>), <span class="at">k=</span><span class="dv">10</span>) <span class="co"># change num of topics</span></span>
-<span id="cb9-39"><a href="#cb9-39" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb9-40"><a href="#cb9-40" aria-hidden="true" tabindex="-1"></a>      W <span class="ot">&lt;-</span> lda<span class="sc">@</span>gamma <span class="co"># document-topic</span></span>
-<span id="cb9-41"><a href="#cb9-41" aria-hidden="true" tabindex="-1"></a>      H <span class="ot">&lt;-</span> lda<span class="sc">@</span>beta <span class="co"># topic-term</span></span>
-<span id="cb9-42"><a href="#cb9-42" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb9-43"><a href="#cb9-43" aria-hidden="true" tabindex="-1"></a>      doc_topics <span class="ot">&lt;-</span> <span class="fu">tidy</span>(lda, <span class="at">matrix=</span><span class="st">&quot;gamma&quot;</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb9-44"><a href="#cb9-44" aria-hidden="true" tabindex="-1"></a>        <span class="fu">mutate</span>(<span class="at">date =</span> i, <span class="at">partyname =</span> j)</span>
-<span id="cb9-45"><a href="#cb9-45" aria-hidden="true" tabindex="-1"></a>      doc_topics_df <span class="ot">&lt;-</span> <span class="fu">rbind</span>(doc_topics_df, doc_topics)</span>
-<span id="cb9-46"><a href="#cb9-46" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb9-47"><a href="#cb9-47" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb9-48"><a href="#cb9-48" aria-hidden="true" tabindex="-1"></a>      topic_words <span class="ot">&lt;-</span> <span class="fu">tidy</span>(lda, <span class="at">matrix=</span><span class="st">&quot;beta&quot;</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb9-49"><a href="#cb9-49" aria-hidden="true" tabindex="-1"></a>        <span class="fu">mutate</span>(<span class="at">date =</span> i, <span class="at">partyname =</span> j)</span>
-<span id="cb9-50"><a href="#cb9-50" aria-hidden="true" tabindex="-1"></a>      topic_words_df <span class="ot">&lt;-</span> <span class="fu">rbind</span>(topic_words_df, topic_words)</span>
-<span id="cb9-51"><a href="#cb9-51" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb9-52"><a href="#cb9-52" aria-hidden="true" tabindex="-1"></a>      <span class="fu">print</span>(<span class="fu">sprintf</span>(<span class="st">&quot;Finished LDA model using %s manifestos of the %s&quot;</span>, </span>
-<span id="cb9-53"><a href="#cb9-53" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">format</span>(<span class="fu">as.Date</span>(i), <span class="at">format =</span> <span class="st">&quot;%Y&quot;</span>), j))</span>
-<span id="cb9-54"><a href="#cb9-54" aria-hidden="true" tabindex="-1"></a>    }</span>
-<span id="cb9-55"><a href="#cb9-55" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb9-56"><a href="#cb9-56" aria-hidden="true" tabindex="-1"></a>  <span class="fu">write.csv</span>(doc_topics_df, <span class="st">&quot;./data/doc_topics.csv&quot;</span>)</span>
-<span id="cb9-57"><a href="#cb9-57" aria-hidden="true" tabindex="-1"></a>  <span class="fu">write.csv</span>(topic_words_df, <span class="st">&quot;./data/topic_words.csv&quot;</span>)</span>
-<span id="cb9-58"><a href="#cb9-58" aria-hidden="true" tabindex="-1"></a>} <span class="cf">else</span> {</span>
-<span id="cb9-59"><a href="#cb9-59" aria-hidden="true" tabindex="-1"></a>  doc_topics_df <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">&quot;./data/doc_topics.csv&quot;</span>)</span>
-<span id="cb9-60"><a href="#cb9-60" aria-hidden="true" tabindex="-1"></a>  topic_words_df <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">&quot;./data/topic_words.csv&quot;</span>)</span>
-<span id="cb9-61"><a href="#cb9-61" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+“health”. It must be noted that words can be shared between topics in
+LDA.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># loop create dfmat and LDA by party and year</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>LDA <span class="ot">=</span> <span class="cn">TRUE</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (LDA <span class="sc">==</span> <span class="cn">TRUE</span>) {</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  dfmat_list <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>  doc_topics_df <span class="ot">&lt;-</span> <span class="fu">tibble</span>()</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>  topic_words_df <span class="ot">&lt;-</span> <span class="fu">tibble</span>()</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>  omit_words <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;united&quot;</span>, <span class="st">&quot;state&quot;</span>, <span class="st">&quot;democrat&quot;</span>, <span class="st">&quot;republican&quot;</span>,</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>                     <span class="st">&quot;american&quot;</span>, <span class="st">&quot;america&quot;</span>, <span class="st">&quot;u.s&quot;</span>)</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>  <span class="co"># create dfmat</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">unique</span>(df<span class="sc">$</span>edate)) {</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> (j <span class="cf">in</span> <span class="fu">unique</span>(df<span class="sc">$</span>partyname)) {</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>      df1 <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>      <span class="fu">filter</span>(partyname <span class="sc">==</span> j <span class="sc">&amp;</span> edate <span class="sc">==</span> <span class="fu">as.Date</span>(i))</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>      dfmat <span class="ot">&lt;-</span>  df1<span class="sc">$</span>text <span class="sc">%&gt;%</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>        <span class="fu">tokens</span>(<span class="at">remove_punct =</span> T) <span class="sc">%&gt;%</span></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>        <span class="fu">tokens_remove</span>(<span class="at">pattern=</span><span class="fu">stopwords</span>(<span class="st">&quot;en&quot;</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>        <span class="fu">tokens_remove</span>(omit_words) <span class="sc">%&gt;%</span></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>        <span class="fu">tokens_wordstem</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>        <span class="fu">dfm</span>()  <span class="sc">%&gt;%</span></span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>        <span class="fu">dfm_trim</span>(<span class="at">min_termfreq =</span> <span class="dv">10</span>) </span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>      raw.sum<span class="ot">=</span><span class="fu">apply</span>(dfmat,<span class="dv">1</span>,<span class="at">FUN=</span>sum)</span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>      dfmat<span class="ot">=</span>dfmat[raw.sum<span class="sc">!=</span><span class="dv">0</span>,]</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>      <span class="fu">print</span>(<span class="fu">sprintf</span>(<span class="st">&quot;Created (%s, %s) dfmat using %s manifestos of the %s&quot;</span>, </span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>                   <span class="fu">dim</span>(dfmat)[<span class="dv">1</span>], <span class="fu">dim</span>(dfmat)[<span class="dv">2</span>], <span class="fu">format</span>(<span class="fu">as.Date</span>(i), <span class="at">format =</span> <span class="st">&quot;%Y&quot;</span>), j))</span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>      dfmat_list <span class="ot">&lt;-</span> <span class="fu">append</span>(dfmat_list, dfmat)</span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a>      <span class="co"># LDA model</span></span>
+<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a>      <span class="fu">print</span>(<span class="fu">sprintf</span>(<span class="st">&quot;Starting LDA model using %s manifestos of the %s&quot;</span>, </span>
+<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">format</span>(<span class="fu">as.Date</span>(i), <span class="at">format =</span> <span class="st">&quot;%Y&quot;</span>), j))</span>
+<span id="cb7-38"><a href="#cb7-38" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb7-39"><a href="#cb7-39" aria-hidden="true" tabindex="-1"></a>      lda <span class="ot">&lt;-</span> <span class="fu">LDA</span>(dfmat, <span class="at">control=</span><span class="fu">list</span>(<span class="at">seed=</span><span class="dv">28</span>), <span class="at">k=</span><span class="dv">10</span>) <span class="co"># change num of topics</span></span>
+<span id="cb7-40"><a href="#cb7-40" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb7-41"><a href="#cb7-41" aria-hidden="true" tabindex="-1"></a>      W <span class="ot">&lt;-</span> lda<span class="sc">@</span>gamma <span class="co"># document-topic</span></span>
+<span id="cb7-42"><a href="#cb7-42" aria-hidden="true" tabindex="-1"></a>      H <span class="ot">&lt;-</span> lda<span class="sc">@</span>beta <span class="co"># topic-term</span></span>
+<span id="cb7-43"><a href="#cb7-43" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb7-44"><a href="#cb7-44" aria-hidden="true" tabindex="-1"></a>      doc_topics <span class="ot">&lt;-</span> <span class="fu">tidy</span>(lda, <span class="at">matrix=</span><span class="st">&quot;gamma&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb7-45"><a href="#cb7-45" aria-hidden="true" tabindex="-1"></a>        <span class="fu">mutate</span>(<span class="at">date =</span> i, <span class="at">partyname =</span> j)</span>
+<span id="cb7-46"><a href="#cb7-46" aria-hidden="true" tabindex="-1"></a>      doc_topics_df <span class="ot">&lt;-</span> <span class="fu">rbind</span>(doc_topics_df, doc_topics)</span>
+<span id="cb7-47"><a href="#cb7-47" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb7-48"><a href="#cb7-48" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb7-49"><a href="#cb7-49" aria-hidden="true" tabindex="-1"></a>      topic_words <span class="ot">&lt;-</span> <span class="fu">tidy</span>(lda, <span class="at">matrix=</span><span class="st">&quot;beta&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb7-50"><a href="#cb7-50" aria-hidden="true" tabindex="-1"></a>        <span class="fu">mutate</span>(<span class="at">date =</span> i, <span class="at">partyname =</span> j)</span>
+<span id="cb7-51"><a href="#cb7-51" aria-hidden="true" tabindex="-1"></a>      topic_words_df <span class="ot">&lt;-</span> <span class="fu">rbind</span>(topic_words_df, topic_words)</span>
+<span id="cb7-52"><a href="#cb7-52" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb7-53"><a href="#cb7-53" aria-hidden="true" tabindex="-1"></a>      <span class="fu">print</span>(<span class="fu">sprintf</span>(<span class="st">&quot;Finished LDA model using %s manifestos of the %s&quot;</span>, </span>
+<span id="cb7-54"><a href="#cb7-54" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">format</span>(<span class="fu">as.Date</span>(i), <span class="at">format =</span> <span class="st">&quot;%Y&quot;</span>), j))</span>
+<span id="cb7-55"><a href="#cb7-55" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb7-56"><a href="#cb7-56" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb7-57"><a href="#cb7-57" aria-hidden="true" tabindex="-1"></a>  <span class="fu">write.csv</span>(doc_topics_df, <span class="st">&quot;./data/doc_topics.csv&quot;</span>)</span>
+<span id="cb7-58"><a href="#cb7-58" aria-hidden="true" tabindex="-1"></a>  <span class="fu">write.csv</span>(topic_words_df, <span class="st">&quot;./data/topic_words.csv&quot;</span>)</span>
+<span id="cb7-59"><a href="#cb7-59" aria-hidden="true" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb7-60"><a href="#cb7-60" aria-hidden="true" tabindex="-1"></a>  doc_topics_df <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">&quot;./data/doc_topics.csv&quot;</span>)</span>
+<span id="cb7-61"><a href="#cb7-61" aria-hidden="true" tabindex="-1"></a>  topic_words_df <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">&quot;./data/topic_words.csv&quot;</span>)</span>
+<span id="cb7-62"><a href="#cb7-62" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
 <pre><code>[1] &quot;Created (1386, 354) dfmat using 2012 manifestos of the Democratic Party&quot;
 [1] &quot;Starting LDA model using 2012 manifestos of the Democratic Party&quot;
 [1] &quot;Finished LDA model using 2012 manifestos of the Democratic Party&quot;
@@ -556,20 +563,27 @@ common words for the economic growth topic can be “GDP”, “development”,
 [1] &quot;Created (2238, 516) dfmat using 2020 manifestos of the Republican Party&quot;
 [1] &quot;Starting LDA model using 2020 manifestos of the Republican Party&quot;
 [1] &quot;Finished LDA model using 2020 manifestos of the Republican Party&quot;</code></pre>
-<p>For this task, the LDA model is set to return 10 topics. The number
-of topics is a hyperparameter, which affects the resulting topics in
-such a way that a higher the number of topics can identify more diverse
-and specific topics. In contrast, by decreasing this hyperparameter, the
-model can identify more general topics given the set of documents.</p>
-<p>After investigating the document-topics matrix, using a 10-topic
-model identifies that each topic account for more or less than 10% per
-document. For example, the table below shows the topic share of the 10
-topics using Democrats’ manifesto in 2012.</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>doc_topics_df <span class="sc">%&gt;%</span></span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(document, date, partyname) <span class="sc">%&gt;%</span></span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">topic_share =</span> <span class="fu">round</span>(gamma,<span class="dv">3</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(date, partyname, document, topic, topic_share) <span class="sc">%&gt;%</span></span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span></code></pre></div>
+<p>In topic modeling, the number of topics is considered as a
+hyperparameter as it affects the resulting topics. A hyperparameter is a
+parameter that is external to the model and is used to control the
+learning process. For example, a higher number of topics allows the
+identification of a more diverse and specific set of topics. In
+contrast, by decreasing this hyperparameter, the model can identify more
+general topics given the set of documents. In the LDA model below, the
+number of topics is arbitrarily set to 10. It must also be noted that
+the LDA model returns different results unless the <code>contol</code>
+is fixed by setting a similar seed every time the code is run.</p>
+<p>After investigating the document-topics matrix, a 10-topic model
+identifies that each topic account for more or less than 10% per
+document. For example, the table below shows the share of each
+identified topic from the 2012 Democrats manifesto. Note that each
+manifesto of a party in a given electoral year is fed into the LDA model
+separately.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>doc_topics_df <span class="sc">%&gt;%</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(document, date, partyname) <span class="sc">%&gt;%</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">topic_share =</span> <span class="fu">round</span>(gamma,<span class="dv">3</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(date, partyname, document, topic, topic_share) <span class="sc">%&gt;%</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span></code></pre></div>
 <div class="kable-table">
 <table>
 <thead>
@@ -656,109 +670,493 @@ topics using Democrats’ manifesto in 2012.</p>
 </table>
 </div>
 <p>Now, to investigate the underlying topics in each party’s manifestos
-in the recent electoral years, the results are plotted showing the top
-10 terms with the highest per-topic-per-word probabilities im each of
-the 10 topics.</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>topic_words_df1 <span class="ot">&lt;-</span> topic_words_df <span class="sc">%&gt;%</span></span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">year =</span> <span class="fu">format</span>(<span class="fu">as.Date</span>(date), <span class="at">format =</span> <span class="st">&quot;%Y&quot;</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">party =</span> <span class="fu">ifelse</span>(partyname <span class="sc">==</span> <span class="st">&quot;Republican Party&quot;</span>, <span class="st">&quot;Republicans&quot;</span>, <span class="st">&quot;Democrats&quot;</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">group =</span> <span class="fu">paste0</span>(year, <span class="st">&quot; &quot;</span>, party),</span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>         <span class="at">color =</span> <span class="fu">ifelse</span>(party <span class="sc">==</span> <span class="st">&quot;Democrats&quot;</span>, <span class="st">&quot;#de2d26&quot;</span>, <span class="st">&quot;#2c7fb8&quot;</span>)) <span class="sc">%&gt;%</span> </span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(topic, date, year, partyname) <span class="sc">%&gt;%</span></span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">slice_max</span>(beta, <span class="at">n =</span> <span class="dv">10</span>) <span class="sc">%&gt;%</span> </span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(date, topic, partyname, <span class="sc">-</span>beta)</span></code></pre></div>
-<p>In 2012, Democrats’ manifesto appear to show Obama’s view on taxing
-middle class in topic</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">unique</span>(topic_words_df1<span class="sc">$</span>group)){</span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    p<span class="ot">&lt;-</span>topic_words_df1 <span class="sc">%&gt;%</span></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>      <span class="fu">filter</span>(group <span class="sc">==</span> i) <span class="sc">%&gt;%</span></span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>      <span class="fu">mutate</span>(<span class="at">term =</span> <span class="fu">reorder_within</span>(term, beta, topic)) <span class="sc">%&gt;%</span></span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>      <span class="fu">ggplot</span>(<span class="fu">aes</span>(beta, term, <span class="at">fill =</span> color)) <span class="sc">+</span></span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>      <span class="fu">geom_col</span>(<span class="at">show.legend =</span> <span class="cn">FALSE</span>) <span class="sc">+</span></span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>      <span class="fu">facet_wrap</span>(<span class="sc">~</span> topic, <span class="at">scales =</span> <span class="st">&quot;free&quot;</span>, <span class="at">ncol=</span><span class="dv">5</span>) <span class="sc">+</span></span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>      <span class="fu">scale_y_reordered</span>() <span class="sc">+</span></span>
-<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>      <span class="fu">labs</span>(<span class="at">title =</span> i) <span class="sc">+</span></span>
-<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>      <span class="fu">scale_fill_identity</span>() <span class="sc">+</span></span>
-<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>      <span class="fu">theme_test</span>()</span>
-<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">print</span>(p)</span>
-<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggsave</span>(<span class="fu">paste0</span>(<span class="st">&quot;./plots/lda_&quot;</span>,i, <span class="st">&quot;.png&quot;</span>))</span>
-<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+in the three recent electoral years, the results are plotted showing the
+top 10 terms with the highest per-topic-per-word probabilities in the
+topic. The <code>topic_words_df</code> is first tidied for plotting with
+<code>ggplot</code>.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>topic_words_df1 <span class="ot">&lt;-</span> topic_words_df <span class="sc">%&gt;%</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">year =</span> <span class="fu">format</span>(<span class="fu">as.Date</span>(date), <span class="at">format =</span> <span class="st">&quot;%Y&quot;</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">party =</span> <span class="fu">ifelse</span>(partyname <span class="sc">==</span> <span class="st">&quot;Republican Party&quot;</span>, <span class="st">&quot;Republicans&quot;</span>, <span class="st">&quot;Democrats&quot;</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">group =</span> <span class="fu">paste0</span>(year, <span class="st">&quot; &quot;</span>, party),</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>         <span class="at">color =</span> <span class="fu">ifelse</span>(party <span class="sc">==</span> <span class="st">&quot;Democrats&quot;</span>, <span class="st">&quot;#2c7fb8&quot;</span>, <span class="st">&quot;#de2d26&quot;</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(topic, date, year, partyname) <span class="sc">%&gt;%</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">slice_max</span>(beta, <span class="at">n =</span> <span class="dv">10</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(date, topic, partyname, <span class="sc">-</span>beta)</span></code></pre></div>
+<p>For the interpretation of results, it must be reiterated that LDA
+topic modeling is performed for each of the 6 sets of documents or
+manifesto per party and year. This means that topic 1 revealed from the
+2012 Democrats’ manifesto is unique to the “topic 1” identified from
+2012 Republicans’ manifesto and to “topic 1” from 2016 Democrats’
+manifesto and so on. Thus, each bar chart of top terms of topics per
+party and year will be interpreted separately, and the underlying topics
+will be compared later.</p>
+<p>This section will now discuss the prevailing topics of the manifestos
+between the Democratic Party and the Republican Party for the electoral
+years 2012, 2016, and 2020.</p>
+<div id="obama-vs.-romney" class="section level4">
+<h4>2012: Obama vs. Romney</h4>
+<p>In 2012, Democrats’ manifesto appear to show Obama’s focus on health
+care in topic 3, which was coined as “Obamacare” during Obama’s term.
+Topic 7 seems to be about the tax scheme concerning middle class. Topic
+9 pertains to the US economy. After suffering from the effects of
+recession which displaced many due to the housing bubble and mortgage
+crisis, the Democratic party during the 2012 elections espouses a
+comprehensive social protection program. It aims to expand health care
+(topic 3), provide jobs (topic 8), and generate businesses towards
+economic recovery (topic 9).</p>
+<p>On the other hand, the Republican party doubles down on effective
+governance wherein they stress the importance of federalism, which is
+identified in topic 1 and 3. This is enshrined in the US Constitution
+supporting devolution of governance at the state-level and small
+government at the federal level. Topic 5 tackles education with words
+like “support”, “school”, “right”, and “need”.</p>
+</div>
+<div id="clinton-vs.-trump" class="section level4">
+<h4>2016: Clinton vs. Trump</h4>
+<p>As America recovered and continued to progress from the recession,
+the Democrats during the 2016 elections acknowledged that such growth
+cannot be sustained if it is not shared equitably. In the plot, the
+prevailing topics from Democrats’ manifesto appear to focus on health
+policies as well as seen in topic 2 and 5. Major policy reforms sought
+for the protection of the vulnerable sectors of society such as women
+and workers as seen in topic 3 with words like “support”, “work”, and
+“protect”. Another topic is revealed in 8 regarding education with words
+like “student” and “school” on promoting student support. The same can
+be said for topic 6 on educational support.</p>
+<p>The Republican party on the other hand targeted their policies that
+hit much closer to home as the party revealed the vulnerabilities of the
+last administration wherein although recovered from the recession,
+American families continue to be deprived of services, support, and
+opportunities. This is embodied in topic 1 with words like “protect”,
+“ensure”, and “support”. Similar to Democrats, topic 4 is about
+education rights with “educ”, “children”, and “famili”. Republicans are
+calling for government to take boost and support law enforcement
+authorities so they protect American families which calls for more
+policing and protection. Furthermore, like in 2012, federalism is still
+an underlying topic in their manifesto as revealed in topic 7 and
+10.</p>
+</div>
+<div id="biden-vs.-trump" class="section level4">
+<h4>2020: Biden vs. Trump</h4>
+<p>As expected, most topics revolve around health due to COVID-19 in the
+Democrats’ manifesto as in topic 8 and 10. Topic 10 is specifically
+about health workers. Topic 5 is about access to education which can be
+inferred from words “support”, “access”, “fund”, “increase”, and
+“student”. Topic 9 conveys a similar topic but can be more particular on
+back-to-school policies amid the health crisis. For the first time, the
+term “women” and “right” appeared in topic 7 which is identified to be
+on women rights.</p>
+<p>Similarly, Republicans focused on education (topic 4) as well as
+public health (topic 5). Furthermore, federalism is again a topic in in
+topic 7 and 10.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">unique</span>(topic_words_df1<span class="sc">$</span>group)){</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    p<span class="ot">&lt;-</span>topic_words_df1 <span class="sc">%&gt;%</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>      <span class="fu">filter</span>(group <span class="sc">==</span> i) <span class="sc">%&gt;%</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>      <span class="fu">mutate</span>(<span class="at">term =</span> <span class="fu">reorder_within</span>(term, beta, topic)) <span class="sc">%&gt;%</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>      <span class="fu">ggplot</span>(<span class="fu">aes</span>(beta, term, <span class="at">fill =</span> color)) <span class="sc">+</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>      <span class="fu">geom_bar</span>(<span class="at">stat=</span><span class="st">&quot;identity&quot;</span>, <span class="at">width =</span> .<span class="dv">5</span>) <span class="sc">+</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>      <span class="fu">facet_wrap</span>(<span class="sc">~</span> topic, <span class="at">scales =</span> <span class="st">&quot;free&quot;</span>, <span class="at">ncol=</span><span class="dv">4</span>) <span class="sc">+</span> </span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>      <span class="fu">xlim</span>(<span class="dv">0</span>, <span class="fl">0.08</span>) <span class="sc">+</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>      <span class="fu">scale_y_reordered</span>() <span class="sc">+</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>      <span class="fu">labs</span>(<span class="at">title =</span> i) <span class="sc">+</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>      <span class="fu">scale_fill_identity</span>() <span class="sc">+</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>      <span class="fu">theme_test</span>() <span class="sc">+</span></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>      <span class="fu">theme</span>(<span class="at">axis.text.y =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">8</span>),</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>            <span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">8</span>),</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>            <span class="at">strip.text.x =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">8</span>)) <span class="sc">+</span></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">labs</span>(<span class="at">y =</span> <span class="st">&quot;term&quot;</span>, <span class="at">x =</span> <span class="st">&quot;term probability per topic&quot;</span>) </span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">print</span>(p)</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggsave</span>(<span class="fu">paste0</span>(<span class="st">&quot;./plots/lda_&quot;</span>,i, <span class="st">&quot;.png&quot;</span>))</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
 <p><img
-src="text_as_data_ps2_files/figure-html/unnamed-chunk-9-1.png" /><!-- --><img
-src="text_as_data_ps2_files/figure-html/unnamed-chunk-9-2.png" /><!-- --><img
-src="text_as_data_ps2_files/figure-html/unnamed-chunk-9-3.png" /><!-- --><img
-src="text_as_data_ps2_files/figure-html/unnamed-chunk-9-4.png" /><!-- --><img
-src="text_as_data_ps2_files/figure-html/unnamed-chunk-9-5.png" /><!-- --><img
-src="text_as_data_ps2_files/figure-html/unnamed-chunk-9-6.png" /><!-- --></p>
+src="text_as_data_ps2_files/figure-html/unnamed-chunk-8-1.png" /><!-- --><img
+src="text_as_data_ps2_files/figure-html/unnamed-chunk-8-2.png" /><!-- --><img
+src="text_as_data_ps2_files/figure-html/unnamed-chunk-8-3.png" /><!-- --><img
+src="text_as_data_ps2_files/figure-html/unnamed-chunk-8-4.png" /><!-- --><img
+src="text_as_data_ps2_files/figure-html/unnamed-chunk-8-5.png" /><!-- --><img
+src="text_as_data_ps2_files/figure-html/unnamed-chunk-8-6.png" /><!-- --></p>
+</div>
 </div>
 <div id="structural-topic-modeling" class="section level3">
-<h3>2 Structural Topic Modeling</h3>
-<p>STM also allows you to explicitly model which variables influence the
-prevalence of topics. For example, you can calculate the extent to which
-topics are more or less prevalent over time, or the extent to which
-certain media outlets report more on a topic than others. Compared to at
-least some of the earlier topic modeling approaches, its non-random
-initialization is also more robust.</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#de2d26&quot;</span>,<span class="at">lwd=</span><span class="dv">5</span>)</span>
-<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">1</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">n =</span> <span class="dv">3</span>, <span class="at">main =</span> <span class="st">&quot;2012 Democrats&quot;</span>, </span>
-<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">width=</span><span class="dv">30</span>)</span></code></pre></div>
+<h3>2. Structural Topic Modeling</h3>
+<p>In this section, structural topic model will be implemented using the
+<code>stm</code> package. STM offers more flexibility in the analysis
+such as explicitly modeling which variables influence the prevalence of
+topics. It also allows for topic correlation which will be shown
+later.</p>
+<p>To start STM, each document-feature matrix which were created in the
+code above is converted to a <code>stm</code> format then STM is applied
+to identify 15 topics in the loop. For this task, the number of topics
+is arbitrarily chosen to be 15 since decreasing the number of topics
+results to longer time for the model to converge. The results of the
+model for each set of documents is saved as a list in
+<code>model_list</code>, so that it can easily be called later on.</p>
+<p>Similar to the task that was done in LDA, each set of documents or
+manifesto of a party in a given electoral year is fed into STM, giving
+six separate results. In STM, the hyperparameter number of topics is set
+to 15. To visualize these results, a built-in function of the
+<code>stm</code> package allows for topic exploration to analyze the
+topic-words matrix. With <code>plot.STM</code>, the topic distribution
+is shown together with the most common words for each topic in one
+plot.</p>
+<p>This is basically similar to the topic exploration that was done with
+LDA but the plots are easier to interpret as it is arranged by the
+expected topic proportions and with the top common words already
+provided for each topic.</p>
+<p>In the next discussion, the results will be interpreted based on the
+top 3 topics of each manifesto of a party in an electoral year with the
+three most common words in that topic. (See Appendix 1 for the plots
+showing the top 5 most common word for all 15 topic per manifesto.)</p>
+<div id="obama-vs.-romney-1" class="section level4">
+<h4>2012: Obama vs. Romney</h4>
+<p>Starting with the Democrats’ manifesto, the three main topics relate
+to proposed institutional reforms (topic 6), job creation (topic 9), and
+healthcare (topic 8). This result is quite similar to what was found in
+LDA. Meanwhile, Republicans focus on topics relating to federalism
+(topic 14) with words like “constitution” and “power” like in LDA. One
+topic that first appeared here is on tech regulation (topic 2).</p>
+</div>
+<div id="clinton-vs.-trump-1" class="section level4">
+<h4>2016: Clinton vs. Trump</h4>
+<p>In 2016, for the Democratic party, topic 14 relates to tax policies
+(topic 14) and job creation (topic 8). For the Republican party, topics
+again are about federalism and legal framework (topic 4, 5, 3).</p>
+</div>
+<div id="biden-vs.-trump-1" class="section level4">
+<h4>2020: Biden vs. Trump</h4>
+<p>Finally, in 2020, the Democratic Party tackled health policies to
+combat covid-19 pandemic (topic 11) as well as topics on human rights
+(topic 13). On the other hand, the <code>stm</code> results identified
+similar topics on federalism and law as in the 2016 manifesto for the
+Republican party.</p>
+</div>
+</div>
+<div id="women-rights" class="section level3">
+<h3>Women rights</h3>
+<p>Another relevant topic of the results of STM is on women rights. Both
+women violence appeared as a topic in 2012 Democrats’ and Republicans’
+manifestos. It is also again a prevailing topic by Democrats in 2016 and
+2020 and is associated with health and safety and gun violence,
+respectively. (See Appendix 2)</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow=</span><span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">2</span>))</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#de2d26&quot;</span>,<span class="at">lwd=</span><span class="dv">3</span>)</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">6</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">label=</span><span class="st">&quot;frex&quot;</span>, <span class="at">n =</span> <span class="dv">3</span>, <span class="at">main =</span> <span class="st">&quot;2020 Republicans&quot;</span>, </span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>     <span class="at">topics=</span><span class="fu">c</span>(<span class="dv">4</span>,<span class="dv">5</span>,<span class="dv">3</span>), <span class="at">text.cex=</span>.<span class="dv">8</span>, <span class="at">width=</span><span class="dv">30</span>, <span class="at">cex.main =</span>.<span class="dv">8</span>)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#2c7fb8&quot;</span>,<span class="at">lwd=</span><span class="dv">3</span>)</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">5</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">label=</span><span class="st">&quot;frex&quot;</span>, <span class="at">n =</span> <span class="dv">3</span>, <span class="at">main =</span> <span class="st">&quot;2020 Democrats&quot;</span>, </span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>     <span class="at">topics=</span><span class="fu">c</span>(<span class="dv">3</span>, <span class="dv">11</span>, <span class="dv">13</span>), <span class="at">text.cex=</span>.<span class="dv">8</span>, <span class="at">width=</span><span class="dv">30</span>, <span class="at">cex.main =</span>.<span class="dv">8</span>)</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#de2d26&quot;</span>,<span class="at">lwd=</span><span class="dv">3</span>)</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">4</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">label=</span><span class="st">&quot;frex&quot;</span>, <span class="at">n =</span> <span class="dv">3</span>, <span class="at">main =</span> <span class="st">&quot;2016 Republicans&quot;</span>, </span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>     <span class="at">topics=</span><span class="fu">c</span>(<span class="dv">4</span>,<span class="dv">5</span>,<span class="dv">3</span>), <span class="at">text.cex=</span>.<span class="dv">8</span>, <span class="at">width=</span><span class="dv">30</span>, <span class="at">cex.main =</span>.<span class="dv">8</span>)</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#2c7fb8&quot;</span>,<span class="at">lwd=</span><span class="dv">3</span>)</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">3</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">label=</span><span class="st">&quot;frex&quot;</span>, <span class="at">n =</span> <span class="dv">3</span>, <span class="at">main =</span> <span class="st">&quot;2016 Democrats&quot;</span>, </span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>     <span class="at">topics=</span><span class="fu">c</span>(<span class="dv">12</span>,<span class="dv">14</span>,<span class="dv">8</span>), <span class="at">text.cex=</span>.<span class="dv">8</span>, <span class="at">width=</span><span class="dv">30</span>, <span class="at">cex.main =</span>.<span class="dv">8</span>)</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#de2d26&quot;</span>,<span class="at">lwd=</span><span class="dv">3</span>)</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">2</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">label=</span><span class="st">&quot;frex&quot;</span>, <span class="at">n =</span> <span class="dv">3</span>, <span class="at">main =</span> <span class="st">&quot;Republicans 2012&quot;</span>, </span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">topics=</span><span class="fu">c</span>(<span class="dv">14</span>,<span class="dv">7</span>,<span class="dv">2</span>), <span class="at">text.cex=</span>.<span class="dv">8</span>, <span class="at">width=</span><span class="dv">30</span>, <span class="at">cex.main =</span>.<span class="dv">8</span>)</span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#2c7fb8&quot;</span>,<span class="at">lwd=</span><span class="dv">3</span>)</span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">1</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">label=</span><span class="st">&quot;frex&quot;</span>, <span class="at">n =</span> <span class="dv">3</span>, <span class="at">main =</span> <span class="st">&quot;2012 Democrats&quot;</span>, </span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>     <span class="at">topics=</span><span class="fu">c</span>(<span class="dv">6</span>,<span class="dv">9</span>,<span class="dv">8</span>), <span class="at">text.cex=</span>.<span class="dv">8</span>, <span class="at">width=</span><span class="dv">30</span>, <span class="at">cex.main =</span>.<span class="dv">8</span>)</span></code></pre></div>
+<p><img
+src="text_as_data_ps2_files/figure-html/unnamed-chunk-10-1.png" /><!-- --></p>
+</div>
+</div>
+<div id="iv.-conclusion" class="section level2">
+<h2>IV. Conclusion</h2>
+<p>The findings show that the Democratic Party’s manifestos have focused
+on public health policies even prior to the COVID-19 pandemic.
+Meanwhile, the Republican Party have constantly mentioned topics
+relating to federalism in their manifestos. Throughout the years, both
+parties have campaigned for educational rights, access to school, and
+student support. The relevant topic on human rights, gun violence, and
+women safety are also identified in both parties’ manifestos.</p>
+<p>Moreover, the results between LDA and STM have shown to be
+consistent. For example, both approach identified topics on healthcare,
+job creation, and reforms for the Democratic Party in 2012. In addition,
+the topic on federalism was also revealed in both topic modeling methods
+for the Republican Party. Both approach were able to identify clear
+topics but using STM showed more flexibility and efficiency in the
+analysis.</p>
+<p>With topic modeling, this report was able to answer the research
+question on how the intentions, motives, and views between Democrats and
+Republicans have evolved in the United States using electoral manifestos
+in 2012, 2016, and 2020. A more detailed discussion on the topic
+modeling pipeline, hyperparameter tuning, and research recommendation is
+discussed in the next section.</p>
+</div>
+<div id="v.-research-recommendation" class="section level2">
+<h2>V. Research Recommendation</h2>
+<div id="modify-data-processing-pipeline" class="section level3">
+<h3>Modify data processing pipeline</h3>
+<p>One main recommendation to answer the research questions is to
+reconsider how the data was processed and used for topic modeling. As
+the research question deals with a time series type of data for three
+electoral years, he total 12,121 documents can be fed into the topic
+model as a whole with k =10, instead of feeding each of the 6 sets of
+documents or manifesto per party and year separately. The results of the
+single approach can be merged with the original dataset to tag the
+document-topics matrix with the corresponding party and year.</p>
+<p>With this approach, the share of topics can be plotted between
+Democrats and Republicans over time as shown in the plot below.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>df2 <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">document =</span> <span class="fu">paste0</span>(<span class="st">&quot;text&quot;</span>,<span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(df))) <span class="sc">%&gt;%</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(text))</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>dfmat2 <span class="ot">&lt;-</span>  df2<span class="sc">$</span>text <span class="sc">%&gt;%</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>        <span class="fu">tokens</span>(<span class="at">remove_punct =</span> T) <span class="sc">%&gt;%</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>        <span class="fu">tokens_remove</span>(<span class="at">pattern=</span><span class="fu">stopwords</span>(<span class="st">&quot;en&quot;</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>        <span class="fu">tokens_remove</span>(omit_words) <span class="sc">%&gt;%</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>        <span class="fu">tokens_wordstem</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>        <span class="fu">dfm</span>()  <span class="sc">%&gt;%</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>        <span class="fu">dfm_trim</span>(<span class="at">min_termfreq =</span> <span class="dv">10</span>)</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>raw.sum<span class="ot">=</span><span class="fu">apply</span>(dfmat2,<span class="dv">1</span>,<span class="at">FUN=</span>sum)</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>dfmat2<span class="ot">=</span>dfmat2[raw.sum<span class="sc">!=</span><span class="dv">0</span>,]</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>lda2 <span class="ot">&lt;-</span> <span class="fu">LDA</span>(dfmat2, <span class="at">control=</span><span class="fu">list</span>(<span class="at">seed=</span><span class="dv">28</span>), <span class="at">k=</span><span class="dv">10</span>) </span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>doc_topics2 <span class="ot">&lt;-</span> <span class="fu">tidy</span>(lda2, <span class="at">matrix=</span><span class="st">&quot;gamma&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(df2, <span class="at">by=</span><span class="st">&quot;document&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="fu">c</span>(document, topic, gamma, partyname, date, edate)) <span class="sc">%&gt;%</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">year =</span> <span class="fu">format</span>(<span class="fu">as.Date</span>(edate), <span class="at">format =</span> <span class="st">&quot;%Y&quot;</span>))</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>yp_topics <span class="ot">&lt;-</span> doc_topics2 <span class="sc">%&gt;%</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(year, partyname, topic) <span class="sc">%&gt;%</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">gamma =</span> <span class="fu">sum</span>(gamma)) <span class="sc">%&gt;%</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(year, partyname,) <span class="sc">%&gt;%</span></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">year_share =</span> gamma<span class="sc">/</span><span class="fu">sum</span>(gamma)) <span class="sc">%&gt;%</span></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">topic =</span> <span class="fu">factor</span>(topic))</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>yp_topics <span class="sc">%&gt;%</span></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x=</span>topic, <span class="at">y =</span> year_share, <span class="at">group =</span> partyname, <span class="at">color =</span> partyname)) <span class="sc">+</span></span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>() <span class="sc">+</span></span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;#2c7fb8&quot;</span>, <span class="st">&quot;#de2d26&quot;</span>)) <span class="sc">+</span></span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>year, <span class="at">ncol=</span><span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">&quot;topic&quot;</span>, <span class="at">y =</span> <span class="st">&quot;topic share&quot;</span>)</span></code></pre></div>
 <p><img
 src="text_as_data_ps2_files/figure-html/unnamed-chunk-12-1.png" /><!-- --></p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#2c7fb8&quot;</span>,<span class="at">lwd=</span><span class="dv">5</span>)</span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">2</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">n =</span> <span class="dv">3</span>, <span class="at">main =</span> <span class="st">&quot;2012 Republicans&quot;</span>, </span>
-<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>        <span class="at">width=</span><span class="dv">30</span>)</span></code></pre></div>
-<p><img
-src="text_as_data_ps2_files/figure-html/unnamed-chunk-12-2.png" /><!-- --></p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#de2d26&quot;</span>,<span class="at">lwd=</span><span class="dv">5</span>)</span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">3</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">n =</span> <span class="dv">3</span>, <span class="at">main =</span> <span class="st">&quot;2016 Democrats&quot;</span>, </span>
-<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">width=</span><span class="dv">30</span>)</span></code></pre></div>
-<p><img
-src="text_as_data_ps2_files/figure-html/unnamed-chunk-12-3.png" /><!-- --></p>
-<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#2c7fb8&quot;</span>,<span class="at">lwd=</span><span class="dv">5</span>)</span>
-<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">4</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">n =</span> <span class="dv">3</span>, <span class="at">main =</span> <span class="st">&quot;2016 Republicans&quot;</span>, </span>
-<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">width=</span><span class="dv">30</span>)</span></code></pre></div>
-<p><img
-src="text_as_data_ps2_files/figure-html/unnamed-chunk-12-4.png" /><!-- --></p>
-<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#de2d26&quot;</span>,<span class="at">lwd=</span><span class="dv">5</span>)</span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">5</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">n =</span> <span class="dv">3</span>, <span class="at">main =</span> <span class="st">&quot;2020 Democrats&quot;</span>, </span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">width=</span><span class="dv">30</span>)</span></code></pre></div>
-<p><img
-src="text_as_data_ps2_files/figure-html/unnamed-chunk-12-5.png" /><!-- --></p>
-<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#2c7fb8&quot;</span>,<span class="at">lwd=</span><span class="dv">5</span>)</span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">6</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">n =</span> <span class="dv">3</span>, <span class="at">main =</span> <span class="st">&quot;2020 Republicans&quot;</span>, </span>
-<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">width=</span><span class="dv">30</span>)</span></code></pre></div>
-<p><img
-src="text_as_data_ps2_files/figure-html/unnamed-chunk-12-6.png" /><!-- --></p>
-<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow=</span><span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">2</span>))</span>
-<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#2c7fb8&quot;</span>,<span class="at">lwd=</span><span class="dv">5</span>)</span>
-<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">6</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">n =</span> <span class="dv">3</span>, <span class="at">main =</span> <span class="st">&quot;2020 Republicans&quot;</span>, </span>
-<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>     <span class="at">topics=</span><span class="fu">c</span>(<span class="dv">4</span>,<span class="dv">5</span>,<span class="dv">3</span>), <span class="at">text.cex=</span>.<span class="dv">8</span>, <span class="at">width=</span><span class="dv">30</span>)</span>
-<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#de2d26&quot;</span>,<span class="at">lwd=</span><span class="dv">5</span>)</span>
-<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">5</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">n =</span> <span class="dv">3</span>, <span class="at">main =</span> <span class="st">&quot;2020 Democrats&quot;</span>, </span>
-<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>     <span class="at">topics=</span><span class="fu">c</span>(<span class="dv">3</span>, <span class="dv">11</span>, <span class="dv">13</span>), <span class="at">text.cex=</span>.<span class="dv">8</span>, <span class="at">width=</span><span class="dv">30</span>)</span>
-<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#2c7fb8&quot;</span>,<span class="at">lwd=</span><span class="dv">5</span>)</span>
-<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">4</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">n =</span> <span class="dv">3</span>, <span class="at">main =</span> <span class="st">&quot;2016 Republicans&quot;</span>, </span>
-<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>     <span class="at">topics=</span><span class="fu">c</span>(<span class="dv">4</span>,<span class="dv">5</span>,<span class="dv">3</span>), <span class="at">text.cex=</span>.<span class="dv">8</span>, <span class="at">width=</span><span class="dv">30</span>)</span>
-<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#de2d26&quot;</span>,<span class="at">lwd=</span><span class="dv">5</span>)</span>
-<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">3</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">n =</span> <span class="dv">3</span>, <span class="at">main =</span> <span class="st">&quot;2016 Democrats&quot;</span>, </span>
-<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>     <span class="at">topics=</span><span class="fu">c</span>(<span class="dv">12</span>,<span class="dv">14</span>,<span class="dv">8</span>), <span class="at">text.cex=</span>.<span class="dv">8</span>, <span class="at">width=</span><span class="dv">30</span>)</span>
-<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#2c7fb8&quot;</span>,<span class="at">lwd=</span><span class="dv">5</span>)</span>
-<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">2</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">n =</span> <span class="dv">3</span>, <span class="at">main =</span> <span class="st">&quot;Republicans 2012&quot;</span>, </span>
-<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">topics=</span><span class="fu">c</span>(<span class="dv">14</span>,<span class="dv">7</span>,<span class="dv">2</span>), <span class="at">text.cex=</span>.<span class="dv">8</span>, <span class="at">width=</span><span class="dv">30</span>)</span>
-<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#de2d26&quot;</span>,<span class="at">lwd=</span><span class="dv">5</span>)</span>
-<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">1</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">n =</span> <span class="dv">3</span>, <span class="at">main =</span> <span class="st">&quot;2012 Democrats&quot;</span>, </span>
-<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a>     <span class="at">topics=</span><span class="fu">c</span>(<span class="dv">6</span>,<span class="dv">9</span>,<span class="dv">8</span>), <span class="at">text.cex=</span>.<span class="dv">8</span>, <span class="at">width=</span><span class="dv">30</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggsave</span>(<span class="fu">paste0</span>(<span class="st">&quot;./plots/lda_year_party.png&quot;</span>))</span></code></pre></div>
+<p>Moreover, since the 10 topics are consistent across all manifestos,
+the prevalent topics can be easily identified using the single
+topic-words matrix from all manifestos. In this way, the same topics can
+be plotted across time and can be compared between parties. The plot
+above can then be easily associated with the topics identified in the
+plot below.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>topic_words2 <span class="ot">&lt;-</span> <span class="fu">tidy</span>(lda2, <span class="at">matrix=</span><span class="st">&quot;beta&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(topic) <span class="sc">%&gt;%</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">slice_max</span>(beta, <span class="at">n =</span> <span class="dv">10</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(topic, <span class="sc">-</span>beta)</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>topic_words2 <span class="sc">%&gt;%</span></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">term =</span> <span class="fu">reorder_within</span>(term, beta, topic)) <span class="sc">%&gt;%</span></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(beta, term, <span class="at">fill =</span> <span class="st">&quot;grey40&quot;</span>)) <span class="sc">+</span></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="at">stat=</span><span class="st">&quot;identity&quot;</span>, <span class="at">width =</span> .<span class="dv">5</span>) <span class="sc">+</span></span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> topic, <span class="at">scales =</span> <span class="st">&quot;free&quot;</span>, <span class="at">ncol=</span><span class="dv">5</span>) <span class="sc">+</span> </span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_reordered</span>() <span class="sc">+</span></span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_identity</span>() <span class="sc">+</span></span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_test</span>() <span class="sc">+</span></span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">y =</span> <span class="st">&quot;term&quot;</span>, <span class="at">x =</span> <span class="st">&quot;term probability per topic (beta)&quot;</span>) <span class="sc">+</span></span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.text.y =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">7</span>),</span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a>        <span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">7</span>),</span>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a>        <span class="at">strip.text.x =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">6</span>)) <span class="sc">+</span></span>
+<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">guide =</span> <span class="fu">guide_axis</span>(<span class="at">angle =</span> <span class="dv">45</span>))</span></code></pre></div>
 <p><img
 src="text_as_data_ps2_files/figure-html/unnamed-chunk-13-1.png" /><!-- --></p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggsave</span>(<span class="fu">paste0</span>(<span class="st">&quot;./plots/lda_year_party_topics.png&quot;</span>))</span></code></pre></div>
+<p>Although the approach described makes the analysis and data
+visualization much simpler, the pipeline adopted in this report also has
+its own advantage as it already assumes that the time and party
+variables have an (correlational) effect on the topics in each
+manifesto. This makes the resulting set of topics revealed independent
+per set of documents.</p>
+<p>Furthermore, extending the number timeframe of the dataset can reveal
+and understand the evolution of topics further. Initially, five
+electoral years were considered for analysis but unfortunately, the data
+for the Democratic Party in 2008 only contained one document. Due to
+this, the analysis was limited on the three recent electoral years but
+this can be resolved by processing the data so that each row will
+consist of each line in the manifesto.</p>
+</div>
+<div id="hyperparameter-tuning" class="section level3">
+<h3>Hyperparameter tuning</h3>
+<p>Another recommendation is to use hyperparameter tuning to best
+identify the number number of topics, k, for topic modeling. For this
+report, k is only arbitrarilty chosen, but for future reserach the
+number of topics should be decided based on statistical fit and
+interpretability of topics. K determines the values of gamma and beta
+wherein low values of gamma indicate documents should be composed of few
+topics and low values of beta indicate topics should be composed of few
+terms.</p>
+</div>
+<div id="further-topic-exploration" class="section level3">
+<h3>Further topic exploration</h3>
+<p>Finally, as discussed above, exploring STM and the functions of the
+<code>stm</code> package such as computing the correlations betweeen
+topics, topic estimates of document-topic proportions, and examining the
+exclusivity vs. semantic coherence (See Appendix 2).</p>
 </div>
 </div>
-<div id="v.-conclusion" class="section level2">
-<h2>V. Conclusion</h2>
-<p>Use your topic model to answer your research question by showing
-plots or statistical results. Discuss the implications of what you find,
-and any limitations inherent in your approach. Discuss how the work
-could be improved upon in future research.</p>
+<div id="vi.-appendix" class="section level2">
+<h2>VI. Appendix</h2>
+<div id="stm-functions" class="section level3">
+<h3>1. STM functions</h3>
+<p>The <code>stm</code> library also offers more builtin functions than
+<code>lda</code>. For example, the top words of the 2012 Democratic
+Party’s manifesto is printed below by the highest conditional
+probability for each topic. FREX shows which words are comparatively
+common for a topic and exclusive for that topic compared to other
+topics. This will be used to make the interpretation of each topic more
+unique to each other.</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">labelTopics</span>(model_list[[<span class="dv">1</span>]])</span></code></pre></div>
+<pre><code>Topic 1 Top Words:
+     Highest Prob: peopl, right, democrat, also, nation, american, parti 
+     FREX: right, peac, peopl, understand, recogn, live, univers 
+     Lift: univers, understand, recogn, peac, israel, scienc, live 
+     Score: univers, right, understand, peopl, peac, recogn, israel 
+Topic 2 Top Words:
+     Highest Prob: presid, obama, rule, strengthen, govern, financi, economi 
+     FREX: rule, strengthen, took, wall, play, financi, place 
+     Lift: wall, transpar, rule, place, account, took, strengthen 
+     Score: wall, rule, everyon, obama, presid, took, strengthen 
+Topic 3 Top Words:
+     Highest Prob: world, middl, class, make, polici, back, us 
+     FREX: middl, polici, class, world, progress, foreign, us 
+     Lift: foreign, polici, progress, middl, class, allianc, world 
+     Score: foreign, fail, class, middl, world, polici, us 
+Topic 4 Top Words:
+     Highest Prob: law, women, act, support, effort, protect, oppos 
+     FREX: law, oppos, women, violenc, enforc, act, equal 
+     Lift: enforc, equal, violenc, oppos, respect, law, freedom 
+     Score: enforc, law, women, equal, violenc, act, oppos 
+Topic 5 Top Words:
+     Highest Prob: help, must, ensur, strong, worker, free, work 
+     FREX: strong, free, must, help, poverti, ensur, labor 
+     Lift: labor, free, strong, maintain, citi, must, poverti 
+     Score: labor, must, strong, help, free, safeti, poverti 
+Topic 6 Top Words:
+     Highest Prob: support, invest, continu, reform, provid, democrat, fight 
+     FREX: invest, reform, institut, infrastructur, provid, support, standard 
+     Lift: financ, standard, process, institut, infrastructur, train, invest 
+     Score: financ, support, reform, invest, infrastructur, provid, institut 
+Topic 7 Top Words:
+     Highest Prob: secur, new, america, chang, region, build, reduc 
+     FREX: chang, america, secur, climat, region, partnership, build 
+     Lift: climat, chang, practic, emerg, africa, natur, partnership 
+     Score: climat, chang, secur, global, trade, america, region 
+Topic 8 Top Words:
+     Highest Prob: health, care, famili, busi, access, work, veteran 
+     FREX: care, health, credit, insur, veteran, access, busi 
+     Lift: abl, compani, mortgag, care, insur, credit, health 
+     Score: abl, health, care, credit, insur, busi, compani 
+Topic 9 Top Words:
+     Highest Prob: job, creat, year, million, program, student, home 
+     FREX: creat, million, job, student, year, good, program 
+     Lift: loan, million, creat, student, thousand, good, job 
+     Score: loan, job, creat, million, student, year, save 
+Topic 10 Top Words:
+     Highest Prob: commit, presid, obama, end, war, nuclear, romney 
+     FREX: war, end, commit, mitt, weapon, romney, iraq 
+     Lift: hiv, mitt, war, weapon, end, iraq, romney 
+     Score: hiv, commit, war, end, weapon, mitt, romney 
+Topic 11 Top Words:
+     Highest Prob: presid, tax, cut, work, obama, administr, pay 
+     FREX: cut, pay, tax, first, relief, bill, strategi 
+     Lift: strategi, pay, bill, cut, first, relief, sign 
+     Score: strategi, tax, cut, pay, first, obama, presid 
+Topic 12 Top Words:
+     Highest Prob: state, time, move, forward, togeth, continu, step 
+     FREX: forward, move, time, togeth, puerto, status, face 
+     Lift: forward, status, puerto, rico, move, togeth, face 
+     Score: forward, move, status, puerto, rico, togeth, time 
+Topic 13 Top Words:
+     Highest Prob: countri, communiti, need, econom, take, made, intern 
+     FREX: countri, need, communiti, great, restor, serv, take 
+     Lift: serv, centuri, 21st, countri, restor, contribut, great 
+     Score: serv, countri, communiti, need, safe, centuri, great 
+Topic 14 Top Words:
+     Highest Prob: public, advanc, innov, organ, technolog, threat, nation 
+     FREX: organ, innov, advanc, network, public, technolog, traffick 
+     Lift: traffick, network, terrorist, drug, crimin, organ, innov 
+     Score: traffick, network, public, crimin, terrorist, organ, al-qaeda 
+Topic 15 Top Words:
+     Highest Prob: can, believ, democrat, street, work, like, administr 
+     FREX: believ, can, street, democrat, like, work, administr 
+     Lift: street, believ, can, like, democrat, exist, parti 
+     Score: street, can, believ, democrat, like, parti, work </code></pre>
+<p>The correlation across the topics can also be visualized. Using the
+same manifesto, topics 15, 1, 2, 6, 5 and 13 appear to be correlated.
+Two topics (topic 1 and 2) can be compared wherein words are plotted
+with size proportional to their use within the topic and the x-axis
+shows how close the terms are to one topic over the other (y-axis is
+random).</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>topic_correlation<span class="ot">&lt;-</span><span class="fu">topicCorr</span>(model_list[[<span class="dv">1</span>]])</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(topic_correlation)</span></code></pre></div>
+<p><img
+src="text_as_data_ps2_files/figure-html/unnamed-chunk-15-1.png" /><!-- --></p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(model_list[[<span class="dv">1</span>]], </span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>     <span class="at">type=</span><span class="st">&quot;perspectives&quot;</span>, </span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>     <span class="at">topics=</span><span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), </span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>     <span class="at">plabels =</span> <span class="fu">c</span>(<span class="st">&quot;Topic 1&quot;</span>,<span class="st">&quot;Topic 2&quot;</span>))</span></code></pre></div>
+<p><img
+src="text_as_data_ps2_files/figure-html/unnamed-chunk-17-1.png" /><!-- --></p>
+<p>In addition, the topic estimates of document-topic proportions is
+plotted using 2012 Democrats’ manifesto. This plot basically tells us
+which topics are coming from which documents. As expected, each topic
+has no relation or very little relation with several documents.</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co"># plot(model_list[[1]], type = &quot;hist&quot;, topics = sample(1:15, size = 15))</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(model_list[[<span class="dv">1</span>]], <span class="at">type=</span><span class="st">&quot;hist&quot;</span>)</span></code></pre></div>
+<p><img
+src="text_as_data_ps2_files/figure-html/unnamed-chunk-18-1.png" /><!-- --></p>
+<p>Using <code>topicQuality</code>, the plot of semantic coherence
+vs. exclusivity of topics in the 2012 Democrats’ manifesto is given
+below. Semantic coherence measures how coherent topics are, or how often
+terms describing a topic co-occur. Exclusivity measures how exclusive
+topics are or how much they differ from each other and describe
+different things.</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">topicQuality</span>(<span class="at">model=</span>model_list[[<span class="dv">1</span>]], <span class="at">documents=</span>dfm_stm_list[[<span class="dv">1</span>]]<span class="sc">$</span>documents)</span></code></pre></div>
+<pre><code> [1] -136.3100 -194.6037 -175.9260 -145.0520 -197.9109 -161.7569 -150.6700
+ [8] -148.0860 -147.1607 -189.5163 -133.6732 -208.2623 -174.3291 -217.2114
+[15] -172.8444
+ [1] 9.609207 9.669494 9.739603 9.702083 9.627720 9.625868 9.763253 9.671788
+ [9] 9.756122 9.765698 9.705767 9.725709 9.680164 9.672155 9.838986</code></pre>
+<p><img
+src="text_as_data_ps2_files/figure-html/unnamed-chunk-20-1.png" /><!-- --></p>
+</div>
+<div id="stm-topics-per-party-and-year" class="section level3">
+<h3>2. STM Topics per party and year</h3>
+<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#2c7fb8&quot;</span>,<span class="at">lwd=</span><span class="dv">5</span>)</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">1</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">label=</span><span class="st">&quot;frex&quot;</span>, <span class="at">n =</span> <span class="dv">5</span>, <span class="at">main =</span> <span class="st">&quot;2012 Democrats&quot;</span>, </span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">width=</span><span class="dv">50</span>, <span class="at">text.cex=</span>.<span class="dv">8</span>)</span></code></pre></div>
+<p><img
+src="text_as_data_ps2_files/figure-html/unnamed-chunk-23-1.png" /><!-- --></p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#de2d26&quot;</span>,<span class="at">lwd=</span><span class="dv">5</span>)</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">2</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">label=</span><span class="st">&quot;frex&quot;</span>, <span class="at">n =</span> <span class="dv">5</span>, <span class="at">main =</span> <span class="st">&quot;2012 Republicans&quot;</span>, </span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>        <span class="at">width=</span><span class="dv">50</span>, <span class="at">text.cex=</span>.<span class="dv">8</span>)</span></code></pre></div>
+<p><img
+src="text_as_data_ps2_files/figure-html/unnamed-chunk-23-2.png" /><!-- --></p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#2c7fb8&quot;</span>,<span class="at">lwd=</span><span class="dv">5</span>)</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">3</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">label=</span><span class="st">&quot;frex&quot;</span>, <span class="at">n =</span> <span class="dv">5</span>, <span class="at">main =</span> <span class="st">&quot;2016 Democrats&quot;</span>, </span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">width=</span><span class="dv">50</span>, <span class="at">text.cex=</span>.<span class="dv">8</span>)</span></code></pre></div>
+<p><img
+src="text_as_data_ps2_files/figure-html/unnamed-chunk-23-3.png" /><!-- --></p>
+<div class="sourceCode" id="cb28"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#de2d26&quot;</span>,<span class="at">lwd=</span><span class="dv">5</span>)</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">4</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">label=</span><span class="st">&quot;frex&quot;</span>, <span class="at">n =</span> <span class="dv">5</span>, <span class="at">main =</span> <span class="st">&quot;2016 Republicans&quot;</span>, </span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">width=</span><span class="dv">50</span>, <span class="at">text.cex=</span>.<span class="dv">8</span>)</span></code></pre></div>
+<p><img
+src="text_as_data_ps2_files/figure-html/unnamed-chunk-23-4.png" /><!-- --></p>
+<div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#2c7fb8&quot;</span>,<span class="at">lwd=</span><span class="dv">5</span>)</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">5</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">label=</span><span class="st">&quot;frex&quot;</span>, <span class="at">n =</span> <span class="dv">5</span>, <span class="at">main =</span> <span class="st">&quot;2020 Democrats&quot;</span>, </span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">width=</span><span class="dv">50</span>, <span class="at">text.cex=</span>.<span class="dv">8</span>)</span></code></pre></div>
+<p><img
+src="text_as_data_ps2_files/figure-html/unnamed-chunk-23-5.png" /><!-- --></p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">bty=</span><span class="st">&quot;n&quot;</span>,<span class="at">col=</span><span class="st">&quot;#de2d26&quot;</span>,<span class="at">lwd=</span><span class="dv">5</span>)</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.STM</span>(model_list[[<span class="dv">6</span>]],<span class="at">type=</span><span class="st">&quot;summary&quot;</span>, <span class="at">label=</span><span class="st">&quot;frex&quot;</span>, <span class="at">n =</span> <span class="dv">5</span>, <span class="at">main =</span> <span class="st">&quot;2020 Republicans&quot;</span>, </span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">width=</span><span class="dv">50</span>, <span class="at">text.cex=</span>.<span class="dv">8</span>)</span></code></pre></div>
+<p><img
+src="text_as_data_ps2_files/figure-html/unnamed-chunk-23-6.png" /><!-- --></p>
+</div>
 </div>
 
 
